@@ -6,8 +6,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 
-CLIENT_ID="e62d23f3e70e4d4281559724ebde8c2b"
-CLIENT_SECRET="9d465f3d876c4e0dbc7e7ab181101fee"
+CLIENT_ID=""
+CLIENT_SECRET=""
 REDIRECT_URI="http://127.0.0.1:8888/callback"
 
 scope = "playlist-modify-public playlist-modify-private user-library-read"
