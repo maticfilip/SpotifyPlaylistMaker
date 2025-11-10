@@ -5,6 +5,10 @@ import time
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
 from tkinter import ttk,messagebox
+import pandas as pd
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import csv
 
 
 CLIENT_ID = ""
@@ -170,3 +174,91 @@ def check_spotify_credentials(client_id, client_secret):
     except Exception as e:
         messagebox.showerror("Error", f"Invalid credentials: {e}")
         return None
+    
+def loop_picked_playlists(sp, playlist_urls):
+    if not sp:
+        messagebox.showerror("Error", "Please connect to Spotify first")
+        return
+    try:
+        user=sp.current_user()
+        playlists = []
+        for url in playlist_urls:
+            if not url: 
+                continue
+            playlist_id = url.split("/")[-1].split("?")[0]
+            playlists.append(playlist_id)
+        with open("short_playlist_data.csv", "w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(["track_name", "artist_name", "album_name", "track_url","track_id"])
+                for playlist_id in playlists:
+                    try:
+                        pl = sp.playlist(playlist_id)
+                        results = sp.playlist_items(playlist_id)
+                        tracks = results["items"]
+                        while results["next"]:
+                            results = sp.next(results)
+                            tracks.extend(results["items"])
+                        for item in tracks:
+                            track = item.get("track")
+                            if not track:
+                                continue
+                            track_name = track["name"]
+                            artists = track.get("artists", [])
+                            artist_name = ", ".join([a["name"] for a in artists])
+                            album_name = track["album"]["name"]
+                            track_url = track.get("external_urls", {}).get("spotify", "")
+                            track_id=track["id"]
+                            writer.writerow([track_name, artist_name, album_name, track_url,track_id])
+                    except Exception as e:
+                        print(f"Error processing playlist {playlist_id}: {e}")
+                        
+        messagebox.showinfo("Success", "Playlist data saved to playlist_data.csv")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to process playlists: {e}")
+
+
+
+def loop_songs(sp, csv_path="short_playlist_data.csv", output_csv="formatted_features.csv"):
+    all_features = []
+    base = "https://api.reccobeats.com/v1/audio-features"
+    df = pd.read_csv(csv_path)
+    track_ids = df["track_id"].tolist()
+    r = requests.get(base, params={"ids": track_ids})
+    r.raise_for_status()
+    data = r.json()
+    
+    if isinstance(data, dict):
+        if "audio_features" in data:
+            features_list = data["audio_features"]
+        elif "features" in data:
+            features_list = data["features"]
+        elif "data" in data:
+            features_list = data["data"]
+        elif "items" in data:
+            features_list = data["items"]
+        else:
+            features_list = list(data.values())[0] if data else []
+    elif isinstance(data, list):
+        features_list = data
+    else:
+        features_list = []
+    
+    print("Type of features_list:", type(features_list))
+    print("Length:", len(features_list) if isinstance(features_list, list) else "N/A")
+    
+    features_df = pd.DataFrame(features_list)
+    
+    column_order = ["id", "href", "danceability", "energy", "key", "loudness", 
+                    "mode", "speechiness", "acousticness", "instrumentalness", 
+                    "liveness", "valence", "tempo"]
+    
+    existing_columns = [col for col in column_order if col in features_df.columns]
+    if existing_columns:
+        remaining = [col for col in features_df.columns if col not in existing_columns]
+        features_df = features_df[existing_columns + remaining]
+    
+    features_df.to_csv(output_csv, index=False)
+    
+    print(features_df.head())
+    
+    return features_df

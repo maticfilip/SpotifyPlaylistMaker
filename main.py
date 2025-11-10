@@ -140,36 +140,52 @@ class Page2(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
+
         self.frejm = ttk.LabelFrame(self, text="Connect with your API", padding=10)
         self.frejm.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+
         self.desc_label = ttk.Label(self.frejm, text="Here you can use AI to generate some new playlists for you.")
         self.desc_label.grid(row=1, column=1, padx=5, pady=5)
+
         self.input_label = ttk.Label(self.frejm, text="Insert your API client_id. This information does not get saved.")
         self.input_label.grid(row=2, column=1, padx=5, pady=5)
+
         self.entry_id = ttk.Entry(self.frejm)
         self.entry_id.grid(row=3, column=1, padx=5, pady=5)
+
         self.input_label = ttk.Label(self.frejm, text="Insert your API client_secret. This information does not get saved.")
         self.input_label.grid(row=4, column=1, padx=5, pady=5)
+
         self.entry_secret = ttk.Entry(self.frejm)
         self.entry_secret.grid(row=5, column=1, padx=5, pady=5)
+
         self.connect_btn = ttk.Button(self.frejm, text="Connect", command=self.connect_spotify)
         self.connect_btn.grid(row=6, column=1, padx=5, pady=5)
+
         self.drugi_frejm = ttk.LabelFrame(self, text="Insert your playlists.", padding=10)
         self.drugi_frejm.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        
         self.playlist_label = ttk.Label(self.drugi_frejm, text="Insert the link to your first playlist.")
         self.playlist_label.grid(row=0, column=1, padx=5, pady=5)
+
         self.entry_pl1 = ttk.Entry(self.drugi_frejm)
         self.entry_pl1.grid(row=1, column=1, padx=5, pady=5)
+
         self.playlist_label = ttk.Label(self.drugi_frejm, text="Insert the link to your second playlist.")
         self.playlist_label.grid(row=2, column=1, padx=5, pady=5)
+
         self.entry_pl2 = ttk.Entry(self.drugi_frejm)
         self.entry_pl2.grid(row=3, column=1, padx=5, pady=5)
+
         self.playlist_label = ttk.Label(self.drugi_frejm, text="Insert the link to your third playlist.")
         self.playlist_label.grid(row=4, column=1, padx=5, pady=5)
+
         self.entry_pl3 = ttk.Entry(self.drugi_frejm)
         self.entry_pl3.grid(row=5, column=1, padx=5, pady=5)
-        self.combine_btn = ttk.Button(self.drugi_frejm, text="Go through your playlists.", padding=5)
+
+        self.combine_btn = ttk.Button(self.drugi_frejm, text="Go through your playlists.", padding=5, command=self.process_picked_playlists)
         self.combine_btn.grid(row=6, column=1, padx=10, pady=10)
+
         self.text_label = ttk.Label(self.drugi_frejm, text="Or go through all your handmade playlists with the API.")
         self.text_label.grid(row=0, column=2, padx=10, pady=10)
         self.go_btn = ttk.Button(self.drugi_frejm, text="Go through your playlists.", padding=10, command=self.loop_playlists)
@@ -208,6 +224,7 @@ class Page2(tk.Frame):
             messagebox.showerror("Error", f"Failed to fetch playlists: {e}")
         with open("playlist_data.csv", "w", newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
+            writer.writerow(["playlist_name","track_name","artist_name","album_name","track_url"])
             for pl in playlists:
                 playlist_name = pl["name"]
                 playlist_id = pl["id"]
@@ -221,10 +238,36 @@ class Page2(tk.Frame):
                     if not track:
                         continue
                     track_name = track["name"]
+                    artists=track.get("artists", [])
+                    if artists:
+                        artist_name=", ".join([a["name"] for a in artists])
+                    else:
+                        artist_name=""
                     album_name = track["album"]["name"]
                     track_url = track.get("external_urls", {}).get("spotify", "")
-                    writer.writerow([playlist_name, track_name, album_name, track_url])
+                    writer.writerow([playlist_name, track_name,artist_name, album_name, track_url])
             messagebox.showinfo("Success", "Playlist data saved to a new csv file.")
 
+    def process_picked_playlists(self):
+        if not self.sp:
+            messagebox.showerror("Error", "Please connect to Spotify first")
+            return
+            
+        playlist_urls = [
+            self.entry_pl1.get().strip(),
+            self.entry_pl2.get().strip(),
+            self.entry_pl3.get().strip()
+        ]
+        
+        if not any(playlist_urls):  # Check if all entries are empty
+            messagebox.showwarning("Warning", "Please enter at least one playlist URL")
+            return
+            
+        try:
+            core.loop_picked_playlists(self.sp, playlist_urls)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to process playlists: {e}")
+
+        core.loop_songs(self,"short_playlist_data.csv")
 app = App()
 app.mainloop()
