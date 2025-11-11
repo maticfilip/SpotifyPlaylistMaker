@@ -4,11 +4,9 @@ from datetime import datetime
 import core
 import threading
 import csv
-from bs4 import BeautifulSoup
-import requests
 from datetime import datetime, timedelta
-import time
 import spotipy
+import pandas as pd
 from spotipy.oauth2 import SpotifyOAuth
 
 LARGEFONT = ("Verdana", 35)
@@ -46,22 +44,33 @@ class StartPage(tk.Frame):
 class Page1(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent)
+        
         self.controller = controller
         self.sp = None
+
         frm = ttk.Frame(self, padding=12)
         frm.grid(row=0, column=0, sticky="nsew")
         ttk.Label(frm, text="Datum (YYYY-MM-DD):").grid(row=0, column=0, sticky="w")
+
         self.date_entry = ttk.Entry(frm, width=20)
         self.date_entry.grid(row=0, column=1, sticky="w")
+
         self.scrape_btn = ttk.Button(frm, text="Scrape Charts", command=self.on_scrape)
         self.scrape_btn.grid(row=0, column=2, padx=6)
+
         self.listbox = tk.Listbox(frm, width=60, height=15)
         self.listbox.grid(row=1, column=0, columnspan=3, pady=8)
+
         self.playlist_btn = ttk.Button(frm, text="Create Spotify Playlist", command=self.on_create_playlist, state="disabled")
         self.playlist_btn.grid(row=2, column=0, pady=6)
+
         self.status_var = tk.StringVar(value="Idle")
         self.status_label = ttk.Label(frm, textvariable=self.status_var)
         self.status_label.grid(row=3, column=0, columnspan=3, sticky="w")
+
+        self.back_btn = ttk.Button(self, text="Go back", command=lambda: controller.show_frame(StartPage))
+        self.back_btn.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+
         self.current_songs = []
         self.matched_date = None
         self.sp = None
@@ -116,7 +125,7 @@ class Page1(tk.Frame):
                 self.sp = core.setup_spotify()
                 user = self.sp.current_user()
                 self.user_id = user["id"]
-            result = core.create_playlist(self.sp, self.user_id, self.matched_date, self.current_songs, public=True, description=f"Top songs from {self.matched_date} scraped from MusicChartsArchive.com")
+            result = core.create_playlist(self.sp, self.user_id, self.matched_date, songs_list, public=True, description=f"Top songs from {self.matched_date} scraped from MusicChartsArchive.com")
             if result and result.get("playlist"):
                 playlist_obj = result["playlist"]
                 name = playlist_obj.get("name", "Playlist")
@@ -140,6 +149,9 @@ class Page2(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
+
+        self.back_btn = ttk.Button(self, text="Go back", command=lambda: controller.show_frame(StartPage))
+        self.back_btn.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
 
         self.frejm = ttk.LabelFrame(self, text="Connect with your API", padding=10)
         self.frejm.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
@@ -269,5 +281,21 @@ class Page2(tk.Frame):
             messagebox.showerror("Error", f"Failed to process playlists: {e}")
 
         core.loop_songs(self,"short_playlist_data.csv")
+
+        all_tracks=pd.read_csv("1msongs.csv")
+        playlist_tracks=pd.read_csv("formatted_features.csv")
+
+        recommendations = core.recommend(all_tracks, playlist_tracks, top_n=25)
+
+        recommendations.to_csv("recommended_tracks.csv", index=False, encoding="utf-8-sig")
+        print("✅ Recommendations saved to 'recommended_tracks.csv'")
+
+        recommended_songs=pd.read_csv("recommended_tracks.csv")
+        core.get_song_names(recommended_songs)
+
+        tracks_info = pd.read_csv("tracks_info.csv")
+        songs_list = tracks_info.apply(lambda x: f"{x['trackTitle']} {x['artists']}", axis=1).tolist()
+
+        
 app = App()
 app.mainloop()
