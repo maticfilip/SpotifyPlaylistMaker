@@ -361,3 +361,38 @@ def get_song_names(recommended_songs):
     pd.DataFrame(results).to_csv("tracks_info.csv", index=False, encoding="utf-8-sig")
     print("Done")
 
+
+def recommended_playlist(sp, tracks_info, name, user_id, public=True):
+    
+    if isinstance(tracks_info, pd.DataFrame):
+        df = tracks_info.copy()
+    else:
+        df = pd.read_csv(tracks_info)
+
+    queries = (df["trackTitle"].astype(str) + " " + df["artists"].astype(str)).tolist()
+
+
+    playlist_desc=f"A playlist created by @app."
+
+    playlist=sp.user_playlist_create(
+        user=user_id,
+        name=name,
+        description=playlist_desc,
+        public=public
+    )
+
+    track_uris=[]
+    not_found=[]
+    for q in queries:
+        uri=_search_track_uri(sp, q)
+        if uri:
+            track_uris.append(uri)
+        else:
+            not_found.append(q)
+
+    for i in range(0, len(track_uris), 100):
+        sp.playlist_add_items(playlist_id=playlist["id"], items=track_uris[i:i+100])
+
+    return {"playlist": playlist, "added": len(track_uris), "not_found": not_found}
+
+
