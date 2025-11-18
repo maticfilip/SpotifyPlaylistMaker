@@ -190,7 +190,7 @@ def loop_picked_playlists(sp, playlist_urls):
                 continue
             playlist_id = url.split("/")[-1].split("?")[0]
             playlists.append(playlist_id)
-        with open("short_playlist_data.csv", "w", newline="", encoding="utf-8") as file:
+        with open("data/short_playlist_data.csv", "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerow(["track_name", "artist_name", "album_name", "track_url","track_id"])
                 for playlist_id in playlists:
@@ -221,7 +221,7 @@ def loop_picked_playlists(sp, playlist_urls):
 
 
 
-def loop_songs(sp, csv_path="short_playlist_data.csv", output_csv="formatted_features.csv"):
+def loop_songs(sp, csv_path="data/short_playlist_data.csv", output_csv="data/formatted_features.csv"):
     all_features = []
     base = "https://api.reccobeats.com/v1/audio-features"
 
@@ -272,6 +272,7 @@ def loop_songs(sp, csv_path="short_playlist_data.csv", output_csv="formatted_fea
         print(f"Processed {min(i + batch_size, len(track_ids))} / {len(track_ids)}")
         time.sleep(0.2)  
 
+
     features_df = pd.DataFrame(all_features)
 
     column_order = ["id", "href", "danceability", "energy", "key", "loudness",
@@ -285,10 +286,12 @@ def loop_songs(sp, csv_path="short_playlist_data.csv", output_csv="formatted_fea
 
     features_df.to_csv(output_csv, index=False)
     print(features_df.head())
-    clean_data(csv_path="formatted_features.csv")
-    return features_df
+    
+    cleaned_df = clean_data(csv_path=output_csv)
+    
+    return cleaned_df
 
-def clean_data(csv_path="formatted_features.csv"):
+def clean_data(csv_path="data/formatted_features.csv"):
     df=pd.read_csv(csv_path)
 
     scaler=StandardScaler()
@@ -297,8 +300,13 @@ def clean_data(csv_path="formatted_features.csv"):
     numeric_cols=["danceability","energy","loudness","speechiness","acousticness","instrumentalness","liveness","valence","tempo"]
     df[numeric_cols]=df[numeric_cols].astype(float)
 
+
+
     df_copy=df.copy()
     df_copy[numeric_cols]=scaler.fit_transform(df[numeric_cols])
+
+    df_copy.to_csv(csv_path, index=False)
+    return df_copy
 
 
 def generate_vector(all_tracks, playlist_tracks):
@@ -358,7 +366,7 @@ def get_song_names(recommended_songs):
             results.append({"trackTitle": title, "artists": artists})
         time.sleep(DELAY)
 
-    pd.DataFrame(results).to_csv("tracks_info.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame(results).to_csv("data/tracks_info.csv", index=False, encoding="utf-8-sig")
     print("Done")
 
 
