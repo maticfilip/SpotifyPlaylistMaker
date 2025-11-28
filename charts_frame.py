@@ -1,16 +1,9 @@
-import customtkinter as ctk
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
+from imports import *
 import core
-import threading
-import csv
-import spotipy
-import pandas as pd
-from spotipy.oauth2 import SpotifyOAuth
+from scraper_utils import *
+
 
 class cFrame(ctk.CTkFrame):
-    # accept start_page_class so we don't import main here (breaks circular import)
     def __init__(self, parent, controller, start_page_class):
         super().__init__(parent, fg_color="#0d0d0d")
         self.controller = controller
@@ -20,7 +13,6 @@ class cFrame(ctk.CTkFrame):
         topbar = ctk.CTkFrame(self, fg_color="#121212", corner_radius=10)
         topbar.pack(pady=20, padx=20, fill="x")
 
-        # use the passed StartPage class reference instead of importing it
         back_btn = ctk.CTkButton(topbar, text="← Back", width=100, command=lambda: controller.show_frame(self.start_page_class))
         back_btn.pack(side="right", padx=10, pady=10)
 

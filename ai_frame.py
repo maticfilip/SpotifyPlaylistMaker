@@ -1,14 +1,6 @@
-import customtkinter as ctk
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
+from imports import *
+from spotify_utils import *
 import core
-import threading
-import csv
-import spotipy
-import pandas as pd
-from spotipy.oauth2 import SpotifyOAuth
-
 
 class aiFrame(ctk.CTkFrame):
     def __init__(self, parent, controller, start_page_class):
@@ -69,7 +61,7 @@ class aiFrame(ctk.CTkFrame):
             messagebox.showerror("Error", "Please enter both client ID and client secret.")
             return
         try:
-            sp = core.setup_spotify(client_id=cid, client_secret=secret)
+            sp = setup_spotify(client_id=cid, client_secret=secret)
             self.sp = sp
             user=sp.current_user()
             self.user_id=user["id"]
@@ -134,7 +126,7 @@ class aiFrame(ctk.CTkFrame):
             messagebox.showwarning("Warning", "Please enter at least one playlist URL")
             return
         try:
-            core.loop_picked_playlists(self.sp, playlist_urls)
+            loop_picked_playlists(self.sp, playlist_urls)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to process playlists: {e}")
         core.loop_songs(self.sp,"data/short_playlist_data.csv")
@@ -160,10 +152,10 @@ class aiFrame(ctk.CTkFrame):
     def create_new(self, playlist_name):
         tracks_info = pd.read_csv("data/tracks_info.csv")
         if not self.sp:
-                self.sp = core.setup_spotify()
+                self.sp = setup_spotify()
                 user = self.sp.current_user()
                 self.user_id = user["id"]
-        result=core.recommended_playlist(self.sp, tracks_info, playlist_name, self.user_id, public=True)
+        result=recommended_playlist(self.sp, tracks_info, playlist_name, self.user_id, public=True)
         if result and result.get("playlist"):
                 playlist_obj = result["playlist"]
                 name = playlist_obj.get("name", "Playlist")
